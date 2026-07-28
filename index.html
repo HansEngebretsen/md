@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magna Carta — Markdown Reader & Editor</title>
+
+  <!-- Marked JS Library for Markdown parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://haaans.com/shared/footer.js" defer></script>
+
+  <style>
+    /* CSS Custom Properties configured for slideVars auto-detection */
+    :root {
+      --container-width: 600px;
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --base-font-size: 16px;
+      --line-height: 1.75;
+      --font-family: "Garamond", "Baskerville", serif;
+      --padding-before-title: 24px;
+      --padding-after-title: 8px;
+      --padding-after-paragraph: 16px;
+      --padding-before-list-set: 16px;
+      --padding-after-list-item: 5px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: var(--font-family);
+      font-size: var(--base-font-size);
+      line-height: var(--line-height);
+      margin: 0;
+      padding: 40px 20px 80px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      position: relative;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    /* Action Rail: Sticky container grouping Copy, Settings (SlideVars), and Help */
+    .action-rail {
+      position: sticky;
+      top: 40px;
+      margin-left: calc(100% + 12px);
+      margin-bottom: -120px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+      z-index: 100;
+      width: max-content;
+    }
+
+    /* Show rail when active or directly hovered */
+    .action-rail.active,
+    .action-rail:hover {
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.12s ease, visibility 0.12s ease;
+    }
+
+    /* Common borderless style for rail action buttons */
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      background: transparent;
+      color: var(--text-color);
+      opacity: 0.7;
+      border: none;
+      outline: none;
+      box-shadow: none;
+      padding: 6px;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-family: inherit;
+      user-select: none;
+      white-space: nowrap;
+      transition: opacity 0.15s ease;
+    }
+
+    .action-btn:hover {
+      opacity: 1;
+      background: transparent;
+    }
+
+    /* SlideVars web component override inside rail */
+    slide-vars, #slidevars, [class*="slidevars"], .slidevars-host {
+      position: relative !important;
+      top: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      left: auto !important;
+      z-index: 9999 !important;
+      display: block !important;
+      visibility: visible !important;
+    }
+
+    /* Copy Button expansion specifics */
+    .copy-btn-text {
+      max-width: 0;
+      opacity: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      transition: max-width 0.3s ease, opacity 0.25s ease, margin 0.25s ease;
+      margin-left: 0;
+    }
+
+    .copy-btn.copied {
+      opacity: 1;
+      padding: 6px 12px;
+    }
+
+    .copy-btn.copied .copy-btn-text {
+      max-width: 80px;
+      opacity: 1;
+      margin-left: 2px;
+    }
+
+    .copy-icon-svg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @media (max-width: 680px) {
+      .action-rail {
+        margin-left: calc(100% - 36px);
+      }
+    }
+
+    /* Single content container column constrained by CSS variable */
+    .content-container {
+      width: 100%;
+      max-width: var(--container-width);
+      margin: 0 auto;
+      position: relative;
+    }
+
+    #preview {
+      outline: none;
+      border: none;
+      cursor: text;
+      min-height: 300px;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: var(--base-font-size);
+      line-height: var(--line-height);
+      font-family: var(--font-family);
+    }
+
+    #preview:hover {
+      outline: none;
+    }
+
+    /* Raw Markdown textarea editor */
+    #editor {
+      display: none;
+      width: 100%;
+      min-height: 500px;
+      font-family: var(--font-family), monospace;
+      font-size: var(--base-font-size);
+      line-height: var(--line-height);
+      color: var(--text-color);
+      background-color: transparent;
+      border: none;
+      outline: none;
+      border-radius: 6px;
+      padding: 8px;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+
+    /* Markdown styling elements */
+    #preview h1, #preview h2, #preview h3, #preview h4 {
+      line-height: 1.3;
+      margin-top: var(--padding-before-title);
+      margin-bottom: var(--padding-after-title);
+    }
+
+    #preview > h1:first-child,
+    #preview > h2:first-child,
+    #preview > h3:first-child,
+    #preview > h4:first-child {
+      margin-top: 0.2em;
+    }
+
+    #preview h1 { font-size: 2.2em; border-bottom: 1px solid rgba(128,128,128,0.3); padding-bottom: 0.3em; }
+    #preview h2 { font-size: 1.6em; border-bottom: 1px solid rgba(128,128,128,0.2); padding-bottom: 0.2em; }
+    #preview h3 { font-size: 1.3em; }
+
+    #preview p {
+      margin-top: 0;
+      margin-bottom: var(--padding-after-paragraph);
+    }
+
+    #preview blockquote {
+      margin: 1em 0;
+      padding-left: 1em;
+      border-left: 4px solid rgba(128, 128, 128, 0.4);
+      font-style: italic;
+    }
+
+    #preview ul, #preview ol {
+      padding-left: 1.5em;
+      margin-top: var(--padding-before-list-set);
+      margin-bottom: 1em;
+    }
+
+    #preview li {
+      margin-bottom: var(--padding-after-list-item);
+    }
+
+    #preview hr {
+      border: none;
+      border-top: 1px solid rgba(128, 128, 128, 0.3);
+      margin: 2em 0;
+    }
+
+    #preview code {
+      font-family: ui-monospace, monospace;
+      font-size: 0.88em;
+      padding: 0.2em 0.4em;
+      background-color: rgba(128, 128, 128, 0.15);
+      border-radius: 4px;
+    }
+
+    #preview pre {
+      background-color: rgba(128, 128, 128, 0.1);
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+
+    /* Prevent layout shift before custom element is defined */
+    hans-footer:not(:defined) {
+      display: block;
+      min-height: 76px;
+    }
+
+    /* Native Dialog Modal Styling */
+    dialog#help-modal {
+      border: 1px solid rgba(128, 128, 128, 0.3);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 460px;
+      width: 90vw;
+      background: var(--bg-color);
+      color: var(--text-color);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    dialog#help-modal::backdrop {
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(2px);
+    }
+
+    .dialog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+      padding-bottom: 10px;
+    }
+
+    .dialog-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .dialog-close {
+      background: transparent;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: inherit;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      opacity: 0.7;
+    }
+
+    .dialog-close:hover {
+      opacity: 1;
+      background: rgba(128, 128, 128, 0.15);
+    }
+
+    .dialog-intro {
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+      line-height: 1.5;
+      opacity: 0.9;
+    }
+
+    .shortcut-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+      margin-bottom: 20px;
+    }
+
+    .shortcut-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+
+    kbd {
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      background-color: rgba(128, 128, 128, 0.15);
+      border: 1px solid rgba(128, 128, 128, 0.4);
+      border-radius: 4px;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+      padding: 2px 6px;
+      font-size: 0.8em;
+      font-weight: 600;
+    }
+  </style>
+
+  <script type="module">
+    import { slideVars } from "https://esm.sh/@codepen/slidevars";
+
+    // Initialize slideVars UI controls for CSS variables using native options
+    slideVars.init({
+      "--container-width": { type: "slider", min: 320, max: 1200, default: 600, unit: "px" },
+      "--bg-color": { type: "color", default: "#ffffff" },
+      "--text-color": { type: "color", default: "#000000" },
+      "--base-font-size": { type: "slider", min: 1, max: 50, default: 16, unit: "px" },
+      "--line-height": { type: "slider", min: 1.0, max: 3.0, step: 0.05, default: 1.75, unit: "" },
+      "--padding-before-title": { type: "slider", min: 0, max: 80, default: 24, unit: "px" },
+      "--padding-after-title": { type: "slider", min: 0, max: 60, default: 8, unit: "px" },
+      "--padding-after-paragraph": { type: "slider", min: 0, max: 60, default: 16, unit: "px" },
+      "--padding-before-list-set": { type: "slider", min: 0, max: 60, default: 16, unit: "px" },
+      "--padding-after-list-item": { type: "slider", min: 0, max: 30, default: 5, unit: "px" },
+      "--font-family": { 
+        type: "select", 
+        options: [
+          { label: "Garamond", value: '"Garamond", "Baskerville", serif' },
+          { label: "Georgia", value: 'Georgia, Cambria, serif' },
+          { label: "Sans", value: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+          { label: "Mono", value: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' },
+          { label: "Inter", value: '"Inter", sans-serif' }
+        ],
+        default: '"Garamond", "Baskerville", serif' 
+      }
+    }, {
+      defaultOpen: false,
+      auto: true
+    });
+  </script>
+</head>
+<body>
+
+  <main class="content-container">
+
+    <!-- Unified Sticky Action Rail -->
+    <div class="action-rail">
+      <!-- 1. Copy Button -->
+      <button id="copy-btn" class="action-btn copy-btn" title="Copy content to clipboard">
+        <span id="copy-icon" class="copy-icon-svg">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </span>
+        <span id="copy-text" class="copy-btn-text"></span>
+      </button>
+
+      <!-- 2. Settings / SlideVars Button -->
+      <div id="slidevars-wrapper"></div>
+
+      <!-- 3. Help / Question Mark Button -->
+      <button id="help-btn" class="action-btn help-btn" title="Keyboard Shortcuts & Instructions">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Rendered Markdown view -->
+    <div id="preview"></div>
+
+    <!-- Editable Markdown textarea -->
+    <textarea id="editor" spellcheck="false" placeholder="Type or paste Markdown here..."></textarea>
+  </main>
+
+  <!-- Native HTML Help Modal -->
+  <dialog id="help-modal">
+    <div class="dialog-header">
+      <h3 class="dialog-title">Editor Guide</h3>
+      <button id="help-close-btn" class="dialog-close">&times;</button>
+    </div>
+    <p class="dialog-intro">
+      Edit or paste any markdown, click away to render, editor shortcuts below:
+    </p>
+    <div class="shortcut-list">
+      <div class="shortcut-row">
+        <span>Bold Text</span>
+        <div><kbd>Cmd</kbd> / <kbd>Ctrl</kbd> + <kbd>B</kbd></div>
+      </div>
+      <div class="shortcut-row">
+        <span>Italic Text</span>
+        <div><kbd>Cmd</kbd> / <kbd>Ctrl</kbd> + <kbd>I</kbd></div>
+      </div>
+      <div class="shortcut-row">
+        <span>Cycle Heading (Down)</span>
+        <div><kbd>Shift</kbd> + <kbd>+</kbd> (Body &rarr; H4 &rarr; H3 &rarr; H2 &rarr; H1)</div>
+      </div>
+      <div class="shortcut-row">
+        <span>Cycle Heading (Up)</span>
+        <div><kbd>Shift</kbd> + <kbd>-</kbd> (Body &rarr; H1 &rarr; H2 &rarr; H3 &rarr; H4)</div>
+      </div>
+    </div>
+
+    <!-- Hans Footer Component inside dialog -->
+    <hans-footer></hans-footer>
+  </dialog>
+
+  <script>
+
+    // Helper to customize SlideVars Shadow DOM to match borderless rail buttons
+    function customizeSlideVars() {
+      const sv = document.querySelector('slide-vars');
+      if (!sv || !sv.shadowRoot) return;
+
+      const shadow = sv.shadowRoot;
+
+      // Inject styling into slide-vars shadow root
+      if (!shadow.querySelector('#custom-slidevars-style')) {
+        const customStyle = document.createElement('style');
+        customStyle.id = 'custom-slidevars-style';
+        customStyle.textContent = `
+          :host {
+            position: relative !important;
+            display: inline-block !important;
+            font-size: 11px !important;
+          }
+          button, .toggle-btn, .trigger, [class*="toggle"], [class*="btn"], [class*="button"] {
+            width: auto !important;
+            height: auto !important;
+            padding: 6px !important;
+            min-width: unset !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: transparent !important;
+            color: var(--text-color, #000000) !important;
+            border: none !important;
+            box-shadow: none !important;
+            cursor: pointer !important;
+            opacity: 0.7 !important;
+            transition: opacity 0.15s ease !important;
+            transform: none !important;
+          }
+          button:hover, .toggle-btn:hover {
+            opacity: 1 !important;
+            background: transparent !important;
+            border: none !important;
+            transform: none !important;
+          }
+          .panel, [class*="panel"], .slidevars-panel, dialog, div[role="dialog"], .container {
+            position: absolute !important;
+            top: 0 !important;
+            right: 28px !important;
+            left: auto !important;
+            bottom: auto !important;
+            max-height: calc(85vh - 60px) !important;
+            overflow-y: auto !important;
+            background: var(--bg-color, #ffffff) !important;
+            color: var(--text-color, #000000) !important;
+            border: 1px solid rgba(128, 128, 128, 0.3) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+            padding: 12px !important;
+            width: min(280px, 80vw) !important;
+            font-size: 11px !important;
+          }
+          label, span, input, select {
+            font-size: 11px !important;
+          }
+        `;
+        shadow.appendChild(customStyle);
+      }
+
+      // Replace button inner contents with clean Sliders SVG Icon
+      const btn = shadow.querySelector('button') || shadow.querySelector('[class*="toggle"]') || shadow.querySelector('[class*="btn"]');
+      if (btn && !btn.querySelector('.custom-slider-icon')) {
+        btn.innerHTML = `
+          <svg class="custom-slider-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+        `;
+        btn.title = "Customize Variables";
+      }
+    }
+
+    // Function to close slideVars panel when clicking outside
+    function handleOutsideClickSlideVars(e) {
+      const sv = document.querySelector('slide-vars');
+      if (!sv || !sv.shadowRoot) return;
+
+      const path = e.composedPath ? e.composedPath() : [];
+      const isInside = path.includes(sv);
+
+      const helpBtn = document.getElementById('help-btn');
+      const helpModal = document.getElementById('help-modal');
+      if (path.includes(helpBtn) || path.includes(helpModal)) return;
+
+      if (!isInside) {
+        const shadow = sv.shadowRoot;
+        const panel = shadow.querySelector('.panel') || shadow.querySelector('[class*="panel"]') || shadow.querySelector('dialog') || shadow.querySelector('div[role="dialog"]');
+        
+        if (panel) {
+          const rect = panel.getBoundingClientRect();
+          const compStyle = window.getComputedStyle(panel);
+          const isVisible = compStyle.display !== 'none' && 
+                            compStyle.visibility !== 'hidden' && 
+                            compStyle.opacity !== '0' && 
+                            rect.height > 10;
+
+          if (isVisible) {
+            const toggleBtn = shadow.querySelector('button') || shadow.querySelector('[class*="toggle"]');
+            if (toggleBtn) {
+              toggleBtn.click();
+            }
+          }
+        }
+      }
+    }
+
+    // DOM Element References
+    const previewEl = document.getElementById('preview');
+    const editorEl = document.getElementById('editor');
+    const copyBtn = document.getElementById('copy-btn');
+    const copyIcon = document.getElementById('copy-icon');
+    const copyText = document.getElementById('copy-text');
+    const helpBtn = document.getElementById('help-btn');
+    const helpModal = document.getElementById('help-modal');
+    const helpCloseBtn = document.getElementById('help-close-btn');
+
+    // Full Magna Carta Markdown Text Definition
+    const MAGNA_CARTA_MARKDOWN = `# Magna Carta (1215)
+
+**John, by the grace of God King of England, Lord of Ireland, Duke of Normandy and Aquitaine, and Count of Anjou**, to his archbishops, bishops, abbots, earls, barons, justices, foresters, sheriffs, stewards, servants, and to all his officials and loyal subjects, greeting.
+
+KNOW THAT BEFORE GOD, for the health of our soul and those of our ancestors and heirs, to the honour of God, the exaltation of the Holy Church, and the better ordering of our kingdom, at the advice of our reverend fathers:
+
+### 1. Freedom of the Church
+FIRST, THAT WE HAVE GRANTED TO GOD, and by this present charter have confirmed for us and our heirs in perpetuity, that the English Church shall be free, and shall have its rights undiminished, and its liberties unimpaired.
+
+### 2. Feudal Reliefs
+If any of our earls or barons, or others holding of us in chief by military service shall die, and at his death his heir shall be of full age and owe a relief, he shall have his inheritance on payment of the ancient scale of relief.
+
+### 3. Wardship
+If the heir of any such person is under age and in wardship, when he comes of age he shall have his inheritance without relief or fine.
+
+### 9. Protection of Land Against Debts
+Neither we nor our officials will seize any land or rent for any debt, as long as the debtor has movable goods sufficient to discharge the debt.
+
+### 12. Scutage and Aid
+No 'scutage' or 'aid' may be levied in our kingdom without general consent, unless it is for the ransoming of our person, to make our eldest son a knight, and (once) to marry our eldest daughter.
+
+### 13. Liberties of London and Other Towns
+The city of London shall enjoy all its ancient liberties and free customs, both by land and by water. We also will and grant that all other cities, boroughs, towns, and ports shall enjoy all their liberties and free customs.
+
+### 20. Fines and Amercements
+For a trivial offence, a free man shall be fined only in proportion to the degree of his offence, and for a serious offence correspondingly, but not so heavily as to deprive him of his livelihood.
+
+### 38. Evidence for Accusations
+No bailiff for the future shall, upon his own unsupported complaint, put anyone to his 'law', without credible witnesses brought for this purpose.
+
+### 39. Due Process and Right to Trial
+**No free man shall be seized or imprisoned, or stripped of his rights or possessions, or outlawed or exiled, or deprived of his standing in any way, nor will we proceed with force against him, or send others to do so, except by the lawful judgment of his equals or by the law of the land.**
+
+### 40. Right to Justice
+**To no one will we sell, to no one deny or delay right or justice.**
+
+### 41. Freedom of Movement for Merchants
+All merchants may enter or leave England unharmed and without fear, and may stay or travel within it, by land or water, for purposes of trade, free from all illegal exactions, in accordance with ancient and lawful customs.
+
+### 60. Application of Liberties
+All these customs and liberties that we have granted shall be observed in our kingdom in so far as concerns our relations with our own subjects.
+
+### 61. The Security Clause
+Since, for God, for the betterment of our realm, and for the better calming of the discord that has arisen between us and our barons, we have granted all these things, wishing that they be enjoyed in their entirety...
+
+Given by our hand in the meadow that is called Runnymede, between Windsor and Staines, on the fifteenth day of June in the seventeenth year of our reign.`;
+
+    let isEditing = false;
+    let copyTimeout = null;
+    editorEl.value = MAGNA_CARTA_MARKDOWN;
+
+    // Render Markdown into HTML
+    function renderMarkdown() {
+      const rawText = editorEl.value;
+      previewEl.innerHTML = marked.parse(rawText);
+    }
+
+    // Switch to Raw Markdown Editor
+    function showEditor() {
+      isEditing = true;
+      previewEl.style.display = 'none';
+      editorEl.style.display = 'block';
+      
+      editorEl.style.height = 'auto';
+      editorEl.style.height = Math.max(400, editorEl.scrollHeight + 20) + 'px';
+      
+      editorEl.focus();
+    }
+
+    // Switch to Rendered HTML Preview
+    function showPreview() {
+      isEditing = false;
+      renderMarkdown();
+      editorEl.style.display = 'none';
+      previewEl.style.display = 'block';
+    }
+
+    // Handle clicking into preview to place caret precisely at clicked location
+    function handlePreviewClick(e) {
+      let clickIndex = 0;
+      if (document.caretRangeFromPoint) {
+        const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+        if (range && range.startContainer) {
+          const preRange = document.createRange();
+          preRange.selectNodeContents(previewEl);
+          preRange.setEnd(range.startContainer, range.startOffset);
+          clickIndex = preRange.toString().length;
+        }
+      } else if (document.caretPositionFromPoint) {
+        const pos = document.caretPositionFromPoint(e.clientX, e.clientY);
+        if (pos && pos.offsetNode) {
+          const preRange = document.createRange();
+          preRange.selectNodeContents(previewEl);
+          preRange.setEnd(pos.offsetNode, pos.offset);
+          clickIndex = preRange.toString().length;
+        }
+      }
+
+      const prevText = previewEl.innerText;
+      const rawText = editorEl.value;
+      let targetIndex = 0;
+
+      if (prevText.length > 0 && clickIndex > 0) {
+        const startSnippet = Math.max(0, clickIndex - 15);
+        const endSnippet = Math.min(prevText.length, clickIndex + 15);
+        const snippet = prevText.substring(startSnippet, endSnippet).trim();
+        
+        if (snippet.length > 5) {
+          const foundInRaw = rawText.indexOf(snippet);
+          if (foundInRaw !== -1) {
+            targetIndex = foundInRaw + Math.floor(snippet.length / 2);
+          } else {
+            targetIndex = Math.floor((clickIndex / prevText.length) * rawText.length);
+          }
+        } else {
+          targetIndex = Math.floor((clickIndex / prevText.length) * rawText.length);
+        }
+      }
+
+      const currentScrollY = window.scrollY;
+
+      showEditor();
+
+      editorEl.setSelectionRange(targetIndex, targetIndex);
+      window.scrollTo(0, currentScrollY);
+    }
+
+    function handleCopy() {
+      const tempArea = document.createElement('textarea');
+      tempArea.value = editorEl.value;
+      tempArea.style.position = 'fixed';
+      tempArea.style.opacity = '0';
+      document.body.appendChild(tempArea);
+      tempArea.select();
+
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+        console.error('Failed to copy text: ', err);
+      }
+      document.body.removeChild(tempArea);
+
+      if (isEditing) {
+        showPreview();
+      }
+      editorEl.blur();
+
+      copyBtn.classList.add('copied');
+      copyIcon.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      `;
+      copyText.textContent = 'Copied';
+
+      clearTimeout(copyTimeout);
+      copyTimeout = setTimeout(() => {
+        copyBtn.classList.remove('copied');
+        copyIcon.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        `;
+        copyText.textContent = '';
+      }, 3000);
+    }
+
+    // Keyboard shortcuts handler for raw text editor
+    function handleEditorKeydown(e) {
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      const key = e.key;
+
+      if (isCmdOrCtrl && (key === 'b' || key === 'B')) {
+        e.preventDefault();
+        applyFormatting('**');
+        return;
+      }
+
+      if (isCmdOrCtrl && (key === 'i' || key === 'I')) {
+        e.preventDefault();
+        applyFormatting('*');
+        return;
+      }
+
+      if (e.shiftKey && (key === '+' || key === '=' || key === 'Add')) {
+        e.preventDefault();
+        cycleHeaderLevel(true);
+        return;
+      }
+
+      if (e.shiftKey && (key === '-' || key === '_' || key === 'Subtract')) {
+        e.preventDefault();
+        cycleHeaderLevel(false);
+        return;
+      }
+    }
+
+    function applyFormatting(symbol) {
+      const start = editorEl.selectionStart;
+      const end = editorEl.selectionEnd;
+      const text = editorEl.value;
+      const selected = text.substring(start, end);
+      const symLen = symbol.length;
+
+      if (start >= symLen && end + symLen <= text.length &&
+          text.substring(start - symLen, start) === symbol &&
+          text.substring(end, end + symLen) === symbol) {
+        editorEl.value = text.substring(0, start - symLen) + selected + text.substring(end + symLen);
+        editorEl.setSelectionRange(start - symLen, end - symLen);
+      } else {
+        editorEl.value = text.substring(0, start) + symbol + selected + symbol + text.substring(end);
+        if (selected.length > 0) {
+          editorEl.setSelectionRange(start + symLen, end + symLen);
+        } else {
+          editorEl.setSelectionRange(start + symLen, start + symLen);
+        }
+      }
+    }
+
+    function cycleHeaderLevel(isForward) {
+      const start = editorEl.selectionStart;
+      const text = editorEl.value;
+
+      const lineStart = text.lastIndexOf('\n', start - 1) + 1;
+      let lineEnd = text.indexOf('\n', start);
+      if (lineEnd === -1) lineEnd = text.length;
+
+      const line = text.substring(lineStart, lineEnd);
+
+      const match = line.match(/^(#{1,6})\s*(.*)$/);
+      let currentLevel = 0;
+      let content = line;
+
+      if (match) {
+        currentLevel = match[1].length;
+        content = match[2];
+      }
+
+      let newLevel = 0;
+
+      if (isForward) {
+        if (currentLevel === 0) newLevel = 4;
+        else if (currentLevel === 4) newLevel = 3;
+        else if (currentLevel === 3) newLevel = 2;
+        else if (currentLevel === 2) newLevel = 1;
+        else newLevel = 0;
+      } else {
+        if (currentLevel === 0) newLevel = 1;
+        else if (currentLevel === 1) newLevel = 2;
+        else if (currentLevel === 2) newLevel = 3;
+        else if (currentLevel === 3) newLevel = 4;
+        else newLevel = 0;
+      }
+
+      let newLine = content;
+      if (newLevel > 0) {
+        newLine = '#'.repeat(newLevel) + ' ' + content;
+      }
+
+      editorEl.value = text.substring(0, lineStart) + newLine + text.substring(lineEnd);
+
+      const newCursorPos = lineStart + newLine.length;
+      editorEl.setSelectionRange(newCursorPos, newCursorPos);
+    }
+
+    // Event Listeners
+    previewEl.addEventListener('click', handlePreviewClick);
+
+    editorEl.addEventListener('blur', (e) => {
+      if (e.relatedTarget === copyBtn || copyBtn.contains(e.relatedTarget)) return;
+      showPreview();
+    });
+
+    editorEl.addEventListener('keydown', handleEditorKeydown);
+    copyBtn.addEventListener('click', handleCopy);
+
+    document.addEventListener('click', handleOutsideClickSlideVars);
+
+    helpBtn.addEventListener('click', () => {
+      helpModal.showModal();
+    });
+
+    helpCloseBtn.addEventListener('click', () => {
+      helpModal.close();
+    });
+
+    helpModal.addEventListener('click', (e) => {
+      const rect = helpModal.getBoundingClientRect();
+      const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+        rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+      if (!isInDialog) {
+        helpModal.close();
+      }
+    });
+
+    // Move slide-vars host into rail wrapper
+    function placeSlideVarsInRail() {
+      const sv = document.querySelector('slide-vars');
+      const wrapper = document.getElementById('slidevars-wrapper');
+      if (sv && wrapper && sv.parentElement !== wrapper) {
+        wrapper.appendChild(sv);
+      }
+    }
+
+    // Activity tracking to trigger action rail visibility
+    const actionRail = document.querySelector('.action-rail');
+    let activityTimeout = null;
+
+    function handleUserActivity() {
+      if (!actionRail) return;
+      
+      // Immediately bring rail into view upon activity
+      actionRail.classList.add('active');
+
+      if (activityTimeout) {
+        clearTimeout(activityTimeout);
+      }
+
+      // Slowly fade out after 1 second of inactivity (unless hovered)
+      activityTimeout = setTimeout(() => {
+        if (actionRail && !actionRail.matches(':hover')) {
+          actionRail.classList.remove('active');
+        }
+      }, 1000);
+    }
+
+    // Register user activity listeners across the page
+    ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'touchmove', 'focus'].forEach(eventType => {
+      window.addEventListener(eventType, handleUserActivity, { passive: true });
+    });
+
+    // Initial render on page load
+    renderMarkdown();
+
+    window.addEventListener('DOMContentLoaded', () => {
+      placeSlideVarsInRail();
+      setTimeout(customizeSlideVars, 100);
+      setTimeout(customizeSlideVars, 300);
+      handleUserActivity();
+    });
+  </script>
+</body>
+</html>
