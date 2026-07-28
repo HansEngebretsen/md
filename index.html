@@ -7,10 +7,10 @@
 
   <!-- Marked JS Library for Markdown parsing -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Hans Footer Web Component -->
   <script src="https://haaans.com/shared/footer.js" defer></script>
 
   <style>
-    /* CSS Custom Properties configured for slideVars auto-detection */
     :root {
       --container-width: 600px;
       --bg-color: #ffffff;
@@ -18,11 +18,11 @@
       --base-font-size: 16px;
       --line-height: 1.75;
       --font-family: "Garamond", "Baskerville", serif;
-      --padding-before-title: 24px;
-      --padding-after-title: 8px;
-      --padding-after-paragraph: 16px;
-      --padding-before-list-set: 16px;
-      --padding-after-list-item: 5px;
+      --before-title: 24px;
+      --after-title: 8px;
+      --after-paragraph: 16px;
+      --before-lists: 16px;
+      --after-list-item: 5px;
     }
 
     * {
@@ -45,7 +45,6 @@
       transition: background-color 0.15s ease, color 0.15s ease;
     }
 
-    /* Action Rail: Sticky container grouping Copy, Settings (SlideVars), and Help */
     .action-rail {
       position: sticky;
       top: 40px;
@@ -62,7 +61,6 @@
       width: max-content;
     }
 
-    /* Show rail when active or directly hovered */
     .action-rail.active,
     .action-rail:hover {
       opacity: 1;
@@ -70,7 +68,6 @@
       transition: opacity 0.12s ease, visibility 0.12s ease;
     }
 
-    /* Common borderless style for rail action buttons */
     .action-btn {
       display: inline-flex;
       align-items: center;
@@ -97,19 +94,218 @@
       background: transparent;
     }
 
-    /* SlideVars web component override inside rail */
-    slide-vars, #slidevars, [class*="slidevars"], .slidevars-host {
-      position: relative !important;
-      top: auto !important;
-      right: auto !important;
-      bottom: auto !important;
-      left: auto !important;
-      z-index: 9999 !important;
-      display: block !important;
-      visibility: visible !important;
+    #slidevars-wrapper {
+      position: relative;
     }
 
-    /* Copy Button expansion specifics */
+    .settings-panel {
+      position: absolute;
+      top: 0;
+      right: 32px;
+      width: min(290px, 80vw);
+      max-height: calc(85vh - 40px);
+      overflow-y: auto;
+      background: #ffffff;
+      color: #18181b;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      padding: 20px 16px 16px 16px;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      z-index: 999;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 12px;
+    }
+
+    .settings-panel.open {
+      display: flex;
+    }
+
+    .settings-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      color: #09090b;
+    }
+
+    .settings-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: #09090b;
+      margin-top: 8px;
+      padding-top: 10px;
+      padding-bottom: 6px;
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      margin-bottom: 8px;
+    }
+
+    .settings-control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .arrow-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      color: #18181b;
+      cursor: pointer;
+      padding: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .arrow-btn:hover {
+      background: transparent;
+      opacity: 0.5;
+    }
+
+    .settings-control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .settings-label {
+      font-size: 12px;
+      color: #52525b;
+      font-weight: 500;
+    }
+
+    .val-input-container {
+      display: flex;
+      align-items: center;
+    }
+
+    .settings-unit {
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      color: #71717a;
+      margin-left: 2px;
+      user-select: none;
+    }
+
+    .settings-val-input {
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      text-align: right;
+      width: 42px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 2px 2px;
+      color: #18181b;
+      outline: none;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .settings-val-input:focus {
+      border-color: #3b82f6;
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    .settings-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 2px;
+      outline: none;
+      cursor: ew-resize;
+      margin: 4px 0 2px 0;
+    }
+
+    .settings-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #18181b;
+      cursor: ew-resize;
+      transition: transform 0.1s ease;
+    }
+
+    .settings-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .settings-pills {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .pill-btn {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      background: transparent;
+      color: #18181b;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .pill-btn:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .pill-btn.active {
+      background: #18181b;
+      color: #ffffff;
+      border-color: #18181b;
+    }
+
+    .settings-color-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .settings-color-picker {
+      border: none;
+      background: transparent;
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      padding: 0;
+      border-radius: 50%;
+      overflow: hidden;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .settings-color-picker::-webkit-color-swatch-wrapper {
+      padding: 0;
+      border-radius: 50%;
+    }
+
+    .settings-color-picker::-webkit-color-swatch {
+      border: 1px solid rgba(128, 128, 128, 0.3);
+      border-radius: 50%;
+    }
+
+    .settings-color-picker::-moz-color-swatch {
+      border: 1px solid rgba(128, 128, 128, 0.3);
+      border-radius: 50%;
+    }
+
     .copy-btn-text {
       max-width: 0;
       opacity: 0;
@@ -133,7 +329,7 @@
     .copy-icon-svg {
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-content;
     }
 
     @media (max-width: 680px) {
@@ -142,7 +338,6 @@
       }
     }
 
-    /* Single content container column constrained by CSS variable */
     .content-container {
       width: 100%;
       max-width: var(--container-width);
@@ -166,7 +361,6 @@
       outline: none;
     }
 
-    /* Raw Markdown textarea editor */
     #editor {
       display: none;
       width: 100%;
@@ -184,11 +378,10 @@
       resize: vertical;
     }
 
-    /* Markdown styling elements */
     #preview h1, #preview h2, #preview h3, #preview h4 {
       line-height: 1.3;
-      margin-top: var(--padding-before-title);
-      margin-bottom: var(--padding-after-title);
+      margin-top: var(--before-title);
+      margin-bottom: var(--after-title);
     }
 
     #preview > h1:first-child,
@@ -204,7 +397,7 @@
 
     #preview p {
       margin-top: 0;
-      margin-bottom: var(--padding-after-paragraph);
+      margin-bottom: var(--after-paragraph);
     }
 
     #preview blockquote {
@@ -216,12 +409,12 @@
 
     #preview ul, #preview ol {
       padding-left: 1.5em;
-      margin-top: var(--padding-before-list-set);
+      margin-top: var(--before-lists);
       margin-bottom: 1em;
     }
 
     #preview li {
-      margin-bottom: var(--padding-after-list-item);
+      margin-bottom: var(--after-list-item);
     }
 
     #preview hr {
@@ -245,13 +438,12 @@
       overflow-x: auto;
     }
 
-    /* Prevent layout shift before custom element is defined */
+    /* Prevent layout shift for custom footer element */
     hans-footer:not(:defined) {
       display: block;
       min-height: 76px;
     }
 
-    /* Native Dialog Modal Styling */
     dialog#help-modal {
       border: 1px solid rgba(128, 128, 128, 0.3);
       border-radius: 12px;
@@ -334,38 +526,6 @@
       font-weight: 600;
     }
   </style>
-
-  <script type="module">
-    import { slideVars } from "https://esm.sh/@codepen/slidevars";
-
-    // Initialize slideVars UI controls for CSS variables using native options
-    slideVars.init({
-      "--container-width": { type: "slider", min: 320, max: 1200, default: 600, unit: "px" },
-      "--bg-color": { type: "color", default: "#ffffff" },
-      "--text-color": { type: "color", default: "#000000" },
-      "--base-font-size": { type: "slider", min: 1, max: 50, default: 16, unit: "px" },
-      "--line-height": { type: "slider", min: 1.0, max: 3.0, step: 0.05, default: 1.75, unit: "" },
-      "--padding-before-title": { type: "slider", min: 0, max: 80, default: 24, unit: "px" },
-      "--padding-after-title": { type: "slider", min: 0, max: 60, default: 8, unit: "px" },
-      "--padding-after-paragraph": { type: "slider", min: 0, max: 60, default: 16, unit: "px" },
-      "--padding-before-list-set": { type: "slider", min: 0, max: 60, default: 16, unit: "px" },
-      "--padding-after-list-item": { type: "slider", min: 0, max: 30, default: 5, unit: "px" },
-      "--font-family": { 
-        type: "select", 
-        options: [
-          { label: "Garamond", value: '"Garamond", "Baskerville", serif' },
-          { label: "Georgia", value: 'Georgia, Cambria, serif' },
-          { label: "Sans", value: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
-          { label: "Mono", value: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' },
-          { label: "Inter", value: '"Inter", sans-serif' }
-        ],
-        default: '"Garamond", "Baskerville", serif' 
-      }
-    }, {
-      defaultOpen: false,
-      auto: true
-    });
-  </script>
 </head>
 <body>
 
@@ -384,8 +544,149 @@
         <span id="copy-text" class="copy-btn-text"></span>
       </button>
 
-      <!-- 2. Settings / SlideVars Button -->
-      <div id="slidevars-wrapper"></div>
+      <!-- 2. Custom Settings Button & Popover -->
+      <div id="slidevars-wrapper">
+        <button id="settings-toggle-btn" class="action-btn" title="Customize Variables">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+        </button>
+
+        <div id="settings-panel" class="settings-panel">
+          <div class="settings-title">Settings</div>
+
+          <!-- General Controls -->
+          <div class="settings-control-group">
+            <div class="settings-control-header">
+              <span class="settings-label">Container width</span>
+              <div style="display: flex; align-items: center; gap: 2px;">
+                <button type="button" class="arrow-btn" id="btn-width-dec" title="Decrease width by 10px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+                <button type="button" class="arrow-btn" id="btn-width-inc" title="Increase width by 10px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+                <div class="val-input-container">
+                  <input type="text" class="settings-val-input" id="val-container-width" value="600">
+                  <span class="settings-unit">px</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-control-group">
+            <div class="settings-control-header">
+              <span class="settings-label">Base font size</span>
+              <div class="val-input-container">
+                <input type="text" class="settings-val-input" id="val-base-font-size" value="16">
+                <span class="settings-unit">px</span>
+              </div>
+            </div>
+            <input type="range" class="settings-slider" id="slider-base-font-size" min="1" max="50" value="16" step="1">
+          </div>
+
+          <div class="settings-control-group">
+            <div class="settings-control-header">
+              <span class="settings-label">Line height</span>
+              <div class="val-input-container">
+                <input type="text" class="settings-val-input" id="val-line-height" value="1.75">
+              </div>
+            </div>
+            <input type="range" class="settings-slider" id="slider-line-height" min="1.0" max="3.0" value="1.75" step="0.05">
+          </div>
+
+          <div class="settings-control-group">
+            <span class="settings-label">Font family</span>
+            <div id="font-family-options" class="settings-pills">
+              <button type="button" class="pill-btn active" data-value='"Garamond", "Baskerville", serif'>Garamond</button>
+              <button type="button" class="pill-btn" data-value='Georgia, Cambria, serif'>Georgia</button>
+              <button type="button" class="pill-btn" data-value='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'>Sans</button>
+              <button type="button" class="pill-btn" data-value='ui-monospace, SFMono-Regular, Menlo, Monaco, monospace'>Mono</button>
+              <button type="button" class="pill-btn" data-value='"Inter", sans-serif'>Inter</button>
+            </div>
+          </div>
+
+          <div class="settings-color-row">
+            <span class="settings-label">Background color</span>
+            <input type="color" id="picker-bg-color" class="settings-color-picker" value="#ffffff">
+          </div>
+
+          <div class="settings-color-row">
+            <span class="settings-label">Text color</span>
+            <input type="color" id="picker-text-color" class="settings-color-picker" value="#000000">
+          </div>
+
+          <!-- Padding Section Header with divider line above and below -->
+          <div class="settings-section-title">Padding</div>
+
+          <div class="settings-control-group">
+            <div class="settings-control-header">
+              <span class="settings-label">Before title</span>
+              <div class="val-input-container">
+                <input type="text" class="settings-val-input" id="val-before-title" value="24">
+                <span class="settings-unit">px</span>
+              </div>
+            </div>
+            <input type="range" class="settings-slider" id="slider-before-title" min="0" max="80" value="24" step="1">
+          </div>
+
+          <div class="settings-control-group">
+            <div class="settings-control-header">
+              <span class="settings-label">After title</span>
+              <div class="val-input-container">
+                <input type="text" class="settings-val-input" id="val-after-title" value="8">
+                <span class="settings-unit">px</span>
+              </div>
+            </div>
+            <input type="range" class="settings-slider" id="slider-after-title" min="0" max="60" value="8" step="1">
+          </div>
+
+          <div class="settings-control-group">
+            <div class="settings-control-header">
+              <span class="settings-label">After paragraph</span>
+              <div class="val-input-container">
+                <input type="text" class="settings-val-input" id="val-after-paragraph" value="16">
+                <span class="settings-unit">px</span>
+              </div>
+            </div>
+            <input type="range" class="settings-slider" id="slider-after-paragraph" min="0" max="60" value="16" step="1">
+          </div>
+
+          <div class="settings-control-group">
+            <div class="settings-control-header">
+              <span class="settings-label">Before lists</span>
+              <div class="val-input-container">
+                <input type="text" class="settings-val-input" id="val-before-lists" value="16">
+                <span class="settings-unit">px</span>
+              </div>
+            </div>
+            <input type="range" class="settings-slider" id="slider-before-lists" min="0" max="60" value="16" step="1">
+          </div>
+
+          <div class="settings-control-group">
+            <div class="settings-control-header">
+              <span class="settings-label">After list item</span>
+              <div class="val-input-container">
+                <input type="text" class="settings-val-input" id="val-after-list-item" value="5">
+                <span class="settings-unit">px</span>
+              </div>
+            </div>
+            <input type="range" class="settings-slider" id="slider-after-list-item" min="0" max="30" value="5" step="1">
+          </div>
+        </div>
+      </div>
 
       <!-- 3. Help / Question Mark Button -->
       <button id="help-btn" class="action-btn help-btn" title="Keyboard Shortcuts & Instructions">
@@ -404,7 +705,6 @@
     <textarea id="editor" spellcheck="false" placeholder="Type or paste Markdown here..."></textarea>
   </main>
 
-  <!-- Native HTML Help Modal -->
   <dialog id="help-modal">
     <div class="dialog-header">
       <h3 class="dialog-title">Editor Guide</h3>
@@ -438,124 +738,131 @@
 
   <script>
 
-    // Helper to customize SlideVars Shadow DOM to match borderless rail buttons
-    function customizeSlideVars() {
-      const sv = document.querySelector('slide-vars');
-      if (!sv || !sv.shadowRoot) return;
+    // Interactive Settings Logic with bi-directional editable values & arrow key shift stepping
+    function initSettings() {
+      const toggleBtn = document.getElementById('settings-toggle-btn');
+      const panel = document.getElementById('settings-panel');
 
-      const shadow = sv.shadowRoot;
+      if (!toggleBtn || !panel) return;
 
-      // Inject styling into slide-vars shadow root
-      if (!shadow.querySelector('#custom-slidevars-style')) {
-        const customStyle = document.createElement('style');
-        customStyle.id = 'custom-slidevars-style';
-        customStyle.textContent = `
-          :host {
-            position: relative !important;
-            display: inline-block !important;
-            font-size: 11px !important;
-          }
-          button, .toggle-btn, .trigger, [class*="toggle"], [class*="btn"], [class*="button"] {
-            width: auto !important;
-            height: auto !important;
-            padding: 6px !important;
-            min-width: unset !important;
-            border-radius: 50% !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            background: transparent !important;
-            color: var(--text-color, #000000) !important;
-            border: none !important;
-            box-shadow: none !important;
-            cursor: pointer !important;
-            opacity: 0.7 !important;
-            transition: opacity 0.15s ease !important;
-            transform: none !important;
-          }
-          button:hover, .toggle-btn:hover {
-            opacity: 1 !important;
-            background: transparent !important;
-            border: none !important;
-            transform: none !important;
-          }
-          .panel, [class*="panel"], .slidevars-panel, dialog, div[role="dialog"], .container {
-            position: absolute !important;
-            top: 0 !important;
-            right: 28px !important;
-            left: auto !important;
-            bottom: auto !important;
-            max-height: calc(85vh - 60px) !important;
-            overflow-y: auto !important;
-            background: var(--bg-color, #ffffff) !important;
-            color: var(--text-color, #000000) !important;
-            border: 1px solid rgba(128, 128, 128, 0.3) !important;
-            border-radius: 12px !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
-            padding: 12px !important;
-            width: min(280px, 80vw) !important;
-            font-size: 11px !important;
-          }
-          label, span, input, select {
-            font-size: 11px !important;
-          }
-        `;
-        shadow.appendChild(customStyle);
-      }
+      toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        panel.classList.toggle('open');
+        handleUserActivity();
+      });
 
-      // Replace button inner contents with clean Sliders SVG Icon
-      const btn = shadow.querySelector('button') || shadow.querySelector('[class*="toggle"]') || shadow.querySelector('[class*="btn"]');
-      if (btn && !btn.querySelector('.custom-slider-icon')) {
-        btn.innerHTML = `
-          <svg class="custom-slider-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="4" y1="21" x2="4" y2="14"></line>
-            <line x1="4" y1="10" x2="4" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12" y2="3"></line>
-            <line x1="20" y1="21" x2="20" y2="16"></line>
-            <line x1="20" y1="12" x2="20" y2="3"></line>
-            <line x1="1" y1="14" x2="7" y2="14"></line>
-            <line x1="9" y1="8" x2="15" y2="8"></line>
-            <line x1="17" y1="16" x2="23" y2="16"></line>
-          </svg>
-        `;
-        btn.title = "Customize Variables";
-      }
-    }
-
-    // Function to close slideVars panel when clicking outside
-    function handleOutsideClickSlideVars(e) {
-      const sv = document.querySelector('slide-vars');
-      if (!sv || !sv.shadowRoot) return;
-
-      const path = e.composedPath ? e.composedPath() : [];
-      const isInside = path.includes(sv);
-
-      const helpBtn = document.getElementById('help-btn');
-      const helpModal = document.getElementById('help-modal');
-      if (path.includes(helpBtn) || path.includes(helpModal)) return;
-
-      if (!isInside) {
-        const shadow = sv.shadowRoot;
-        const panel = shadow.querySelector('.panel') || shadow.querySelector('[class*="panel"]') || shadow.querySelector('dialog') || shadow.querySelector('div[role="dialog"]');
-        
-        if (panel) {
-          const rect = panel.getBoundingClientRect();
-          const compStyle = window.getComputedStyle(panel);
-          const isVisible = compStyle.display !== 'none' && 
-                            compStyle.visibility !== 'hidden' && 
-                            compStyle.opacity !== '0' && 
-                            rect.height > 10;
-
-          if (isVisible) {
-            const toggleBtn = shadow.querySelector('button') || shadow.querySelector('[class*="toggle"]');
-            if (toggleBtn) {
-              toggleBtn.click();
-            }
-          }
+      // Close settings panel when clicking outside
+      document.addEventListener('click', (e) => {
+        if (panel.classList.contains('open') && !panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+          panel.classList.remove('open');
         }
+      });
+
+      // Container Width Arrow Controls (10px increments)
+      const widthInput = document.getElementById('val-container-width');
+      const decBtn = document.getElementById('btn-width-dec');
+      const incBtn = document.getElementById('btn-width-inc');
+
+      function updateContainerWidth(val) {
+        let num = parseFloat(val);
+        if (isNaN(num)) return;
+        num = Math.max(320, Math.min(1200, num));
+        widthInput.value = `${num}`;
+        document.documentElement.style.setProperty('--container-width', `${num}px`);
+      }
+
+      if (decBtn && incBtn && widthInput) {
+        decBtn.addEventListener('click', () => {
+          const cur = parseFloat(widthInput.value) || 600;
+          updateContainerWidth(cur - 10);
+        });
+        incBtn.addEventListener('click', () => {
+          const cur = parseFloat(widthInput.value) || 600;
+          updateContainerWidth(cur + 10);
+        });
+        widthInput.addEventListener('change', (e) => {
+          const parsed = parseFloat(e.target.value.replace(/[^0-9.-]/g, ''));
+          if (!isNaN(parsed)) updateContainerWidth(parsed);
+        });
+      }
+
+      // Config map for numerical sliders
+      const slidersConfig = [
+        { varName: '--base-font-size', sliderId: 'slider-base-font-size', inputId: 'val-base-font-size', unit: 'px', min: 1, max: 50, step: 1 },
+        { varName: '--line-height', sliderId: 'slider-line-height', inputId: 'val-line-height', unit: '', min: 1.0, max: 3.0, step: 0.05 },
+        { varName: '--before-title', sliderId: 'slider-before-title', inputId: 'val-before-title', unit: 'px', min: 0, max: 80, step: 1 },
+        { varName: '--after-title', sliderId: 'slider-after-title', inputId: 'val-after-title', unit: 'px', min: 0, max: 60, step: 1 },
+        { varName: '--after-paragraph', sliderId: 'slider-after-paragraph', inputId: 'val-after-paragraph', unit: 'px', min: 0, max: 60, step: 1 },
+        { varName: '--before-lists', sliderId: 'slider-before-lists', inputId: 'val-before-lists', unit: 'px', min: 0, max: 60, step: 1 },
+        { varName: '--after-list-item', sliderId: 'slider-after-list-item', inputId: 'val-after-list-item', unit: 'px', min: 0, max: 30, step: 1 }
+      ];
+
+      slidersConfig.forEach(cfg => {
+        const slider = document.getElementById(cfg.sliderId);
+        const input = document.getElementById(cfg.inputId);
+
+        if (!slider || !input) return;
+
+        function updateValue(rawVal) {
+          let num = parseFloat(rawVal);
+          if (isNaN(num)) return;
+          num = Math.max(cfg.min, Math.min(cfg.max, num));
+
+          slider.value = num;
+          input.value = `${num}`;
+          document.documentElement.style.setProperty(cfg.varName, cfg.unit ? `${num}${cfg.unit}` : `${num}`);
+        }
+
+        slider.addEventListener('input', (e) => updateValue(e.target.value));
+
+        input.addEventListener('change', (e) => {
+          const parsed = parseFloat(e.target.value.replace(/[^0-9.-]/g, ''));
+          if (!isNaN(parsed)) updateValue(parsed);
+        });
+
+        // Arrow Key Listener for Shift + Arrow key precision step (10px or 1px)
+        const handleStepKey = (e) => {
+          if (e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const isInc = (e.key === 'ArrowRight' || e.key === 'ArrowUp');
+            const step = e.shiftKey ? 10 : cfg.step;
+            const current = parseFloat(slider.value) || 0;
+            const next = isInc ? current + step : current - step;
+            updateValue(next);
+          }
+        };
+
+        slider.addEventListener('keydown', handleStepKey);
+        input.addEventListener('keydown', handleStepKey);
+      });
+
+      // Font Family Pills Segmented Buttons
+      const fontPills = document.querySelectorAll('#font-family-options .pill-btn');
+      fontPills.forEach(btn => {
+        btn.addEventListener('click', () => {
+          fontPills.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const fontVal = btn.getAttribute('data-value');
+          document.documentElement.style.setProperty('--font-family', fontVal);
+        });
+      });
+
+      // Color Pickers
+      const bgPicker = document.getElementById('picker-bg-color');
+      if (bgPicker) {
+        bgPicker.addEventListener('input', (e) => {
+          document.documentElement.style.setProperty('--bg-color', e.target.value);
+        });
+      }
+
+      const textPicker = document.getElementById('picker-text-color');
+      if (textPicker) {
+        textPicker.addEventListener('input', (e) => {
+          document.documentElement.style.setProperty('--text-color', e.target.value);
+        });
       }
     }
+
 
     // DOM Element References
     const previewEl = document.getElementById('preview');
@@ -619,6 +926,7 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
     let copyTimeout = null;
     editorEl.value = MAGNA_CARTA_MARKDOWN;
 
+
     // Render Markdown into HTML
     function renderMarkdown() {
       const rawText = editorEl.value;
@@ -644,6 +952,7 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
       editorEl.style.display = 'none';
       previewEl.style.display = 'block';
     }
+
 
     // Handle clicking into preview to place caret precisely at clicked location
     function handlePreviewClick(e) {
@@ -695,6 +1004,7 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
       window.scrollTo(0, currentScrollY);
     }
 
+
     function handleCopy() {
       const tempArea = document.createElement('textarea');
       tempArea.value = editorEl.value;
@@ -735,6 +1045,7 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
         copyText.textContent = '';
       }, 3000);
     }
+
 
     // Keyboard shortcuts handler for raw text editor
     function handleEditorKeydown(e) {
@@ -834,6 +1145,7 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
       editorEl.setSelectionRange(newCursorPos, newCursorPos);
     }
 
+
     // Event Listeners
     previewEl.addEventListener('click', handlePreviewClick);
 
@@ -844,8 +1156,6 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
 
     editorEl.addEventListener('keydown', handleEditorKeydown);
     copyBtn.addEventListener('click', handleCopy);
-
-    document.addEventListener('click', handleOutsideClickSlideVars);
 
     helpBtn.addEventListener('click', () => {
       helpModal.showModal();
@@ -864,15 +1174,6 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
       }
     });
 
-    // Move slide-vars host into rail wrapper
-    function placeSlideVarsInRail() {
-      const sv = document.querySelector('slide-vars');
-      const wrapper = document.getElementById('slidevars-wrapper');
-      if (sv && wrapper && sv.parentElement !== wrapper) {
-        wrapper.appendChild(sv);
-      }
-    }
-
     // Activity tracking to trigger action rail visibility
     const actionRail = document.querySelector('.action-rail');
     let activityTimeout = null;
@@ -887,9 +1188,14 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
         clearTimeout(activityTimeout);
       }
 
-      // Slowly fade out after 1 second of inactivity (unless hovered)
+      // Slowly fade out after 1 second of inactivity (unless panel or modal is open, or rail is hovered)
       activityTimeout = setTimeout(() => {
-        if (actionRail && !actionRail.matches(':hover')) {
+        const settingsPanel = document.getElementById('settings-panel');
+        const isSettingsOpen = settingsPanel && settingsPanel.classList.contains('open');
+        const isHelpOpen = helpModal && helpModal.open;
+        const isHovered = actionRail.matches(':hover');
+
+        if (!isHovered && !isSettingsOpen && !isHelpOpen) {
           actionRail.classList.remove('active');
         }
       }, 1000);
@@ -904,9 +1210,7 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
     renderMarkdown();
 
     window.addEventListener('DOMContentLoaded', () => {
-      placeSlideVarsInRail();
-      setTimeout(customizeSlideVars, 100);
-      setTimeout(customizeSlideVars, 300);
+      initSettings();
       handleUserActivity();
     });
   </script>
