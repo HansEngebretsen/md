@@ -19,26 +19,18 @@ A dead simple markdown editor. Paste it in, tweak it, and copy it back out.
 <table>
 <tr valign="middle">
 <td width="50%">
-<p>Click anywhere to edit</p>
+<p>Quick edit</p>
 </td>
 <td width="50%">
-<img src="demos/edit.gif" alt="Click anywhere to edit">
-</td>
-</tr>
-<tr valign="middle">
-<td width="50%">
-<img src="demos/copy.gif" alt="One click copies it">
-</td>
-<td width="50%">
-<p>One click copies it</p>
+<img src="demos/edit.gif" alt="Quick edit">
 </td>
 </tr>
 <tr valign="middle">
 <td width="50%">
-<p>Tune font and spacing</p>
+<img src="demos/style.gif" alt="Quick tune">
 </td>
 <td width="50%">
-<img src="demos/style.gif" alt="Tune font and spacing">
+<p>Quick tune</p>
 </td>
 </tr>
 </table>
