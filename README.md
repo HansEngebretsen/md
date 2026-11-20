@@ -19,18 +19,20 @@ A dead simple markdown editor. Paste it in, tweak it, and copy it back out.
 <table>
 <tr valign="middle">
 <td width="50%">
-<p>Quick edit</p>
+<h3>One-click edit</h3>
+<p>Paste, edit and render simple markdown. Share entire docs without databases through encoded URL parameters.</p>
 </td>
 <td width="50%">
-<img src="demos/edit.gif" alt="Quick edit">
+<img src="demos/edit.gif" alt="One-click edit">
 </td>
 </tr>
 <tr valign="middle">
 <td width="50%">
-<img src="demos/style.gif" alt="Quick tune">
+<img src="demos/style.gif" alt="Just how you like it">
 </td>
 <td width="50%">
-<p>Quick tune</p>
+<h3>Just how you like it</h3>
+<p>All you got is type, so tweak fonts, spacing and vertical rhythm. Also good CSS print styles, because paper is still cool.</p>
 </td>
 </tr>
 </table>
