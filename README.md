@@ -1,6 +1,6 @@
 # `md`
 
-A dead simple markdown editor. Paste it in, tweak it, and copy it back out.
+A dead simple markdown editor. Paste it in, tweak it, and share sets of markdown, without databases or saving it anywhere (using URLs).
 
 
 <div align="center">
@@ -19,11 +19,11 @@ A dead simple markdown editor. Paste it in, tweak it, and copy it back out.
 <table>
 <tr valign="middle">
 <td width="50%">
-<h3>One-click edit</h3>
-<p>Paste, edit and render simple markdown. Share entire docs without databases through encoded URL parameters.</p>
+<h3>Just .md</h3>
+<p>One-click edit &amp; copy-and-paste style quick markdown rendering.</p>
 </td>
 <td width="50%">
-<img src="demos/edit.gif" alt="One-click edit">
+<img src="demos/edit.gif" alt="Just .md">
 </td>
 </tr>
 <tr valign="middle">
