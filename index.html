@@ -306,7 +306,8 @@
       border-radius: 50%;
     }
 
-    .copy-btn-text {
+    .copy-btn-text,
+    .share-btn-text {
       max-width: 0;
       opacity: 0;
       overflow: hidden;
@@ -326,7 +327,19 @@
       margin-left: 2px;
     }
 
-    .copy-icon-svg {
+    .share-btn.shared {
+      opacity: 1;
+      padding: 6px 12px;
+    }
+
+    .share-btn.shared .share-btn-text {
+      max-width: 80px;
+      opacity: 1;
+      margin-left: 2px;
+    }
+
+    .copy-icon-svg,
+    .share-icon-svg {
       display: flex;
       align-items: center;
       justify-content: flex-content;
@@ -560,6 +573,20 @@
           </svg>
         </span>
         <span id="copy-text" class="copy-btn-text"></span>
+      </button>
+
+      <!-- 1b. Share Button -->
+      <button id="share-btn" class="action-btn share-btn" title="Copy shareable URL to clipboard">
+        <span id="share-icon" class="share-icon-svg">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+          </svg>
+        </span>
+        <span id="share-text" class="share-btn-text"></span>
       </button>
 
       <!-- 2. Custom Settings Button & Popover -->
@@ -888,6 +915,9 @@
     const copyBtn = document.getElementById('copy-btn');
     const copyIcon = document.getElementById('copy-icon');
     const copyText = document.getElementById('copy-text');
+    const shareBtn = document.getElementById('share-btn');
+    const shareIcon = document.getElementById('share-icon');
+    const shareText = document.getElementById('share-text');
     const helpBtn = document.getElementById('help-btn');
     const helpModal = document.getElementById('help-modal');
     const helpCloseBtn = document.getElementById('help-close-btn');
@@ -942,7 +972,28 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
 
     let isEditing = false;
     let copyTimeout = null;
-    editorEl.value = MAGNA_CARTA_MARKDOWN;
+    let shareTimeout = null;
+
+    // Load shared content from URL hash if present
+    function loadFromHash() {
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#md=')) {
+        try {
+          const encoded = hash.substring(4); // strip '#md='
+          const markdown = decodeURIComponent(atob(encoded));
+          editorEl.value = markdown;
+          return true;
+        } catch (e) {
+          console.warn('Failed to decode shared markdown from URL:', e);
+        }
+      }
+      return false;
+    }
+
+    // Try loading from URL hash, otherwise use default content
+    if (!loadFromHash()) {
+      editorEl.value = MAGNA_CARTA_MARKDOWN;
+    }
 
 
     // Render Markdown into HTML
@@ -1065,6 +1116,61 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
     }
 
 
+    // Share handler — encode content to URL hash and copy shareable link
+    function handleShare() {
+      const markdown = editorEl.value;
+      const encoded = btoa(encodeURIComponent(markdown));
+      const shareUrl = `${window.location.origin}${window.location.pathname}#md=${encoded}`;
+
+      // Copy to clipboard
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        showShareFeedback('Copied URL');
+      }).catch(() => {
+        // Fallback for older browsers
+        const tempArea = document.createElement('textarea');
+        tempArea.value = shareUrl;
+        tempArea.style.position = 'fixed';
+        tempArea.style.opacity = '0';
+        document.body.appendChild(tempArea);
+        tempArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempArea);
+        showShareFeedback('Copied URL');
+      });
+
+      // If editing, switch back to preview
+      if (isEditing) {
+        showPreview();
+      }
+      editorEl.blur();
+    }
+
+    function showShareFeedback(msg) {
+      shareBtn.classList.add('shared');
+      shareIcon.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      `;
+      shareText.textContent = msg;
+
+      clearTimeout(shareTimeout);
+      shareTimeout = setTimeout(() => {
+        shareBtn.classList.remove('shared');
+        shareIcon.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+          </svg>
+        `;
+        shareText.textContent = '';
+      }, 3000);
+    }
+
+
     // Keyboard shortcuts handler for raw text editor
     function handleEditorKeydown(e) {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
@@ -1169,11 +1275,13 @@ Given by our hand in the meadow that is called Runnymede, between Windsor and St
 
     editorEl.addEventListener('blur', (e) => {
       if (e.relatedTarget === copyBtn || copyBtn.contains(e.relatedTarget)) return;
+      if (e.relatedTarget === shareBtn || shareBtn.contains(e.relatedTarget)) return;
       showPreview();
     });
 
     editorEl.addEventListener('keydown', handleEditorKeydown);
     copyBtn.addEventListener('click', handleCopy);
+    shareBtn.addEventListener('click', handleShare);
 
     helpBtn.addEventListener('click', () => {
       helpModal.showModal();
